@@ -38,28 +38,44 @@ fi
 # Begin optimizing images
 echo "Optimizing images..."
 cd $INDIR
+NB_FILES=$(ls | wc -l)
 shopt -s nullglob
+i=1
 for file in *.png *.PNG *.jpg *.JPG *.jpeg *.JPEG
 do
-    Cfile=`curl --dump-header /dev/stdout --silent --user api:$TINYAPIKEY --data-binary @"${file}" https://api.tinify.com/shrink | grep Location | awk '{print $2 }'`
+    echo "$i /$NB_FILES"
+    # Cfile=`curl --dump-header /dev/stdout --silent --user api:$TINYAPIKEY --data-binary @"${file}" https://api.tinify.com/shrink | grep Location | awk '{print $2 }'`
     Cfile=${Cfile// }
     Cfile=`echo -n "$Cfile"| sed s/.$//`
     curl --silent $Cfile -o "${OUTDIR}/${file}"
+    i=$((i+1));
 done
 echo "Optimization done"
  
 # Check before replace
 INDIR_FILE_COUNT="$(ls | wc -l)"
+INDIR_SIZE="$(du | awk '{print $1}' | sed s/.$//g)"
 cd $OUTDIR
 OUTDIR_FILE_COUNT="$(ls | wc -l)"
+OUTDIR_SIZE="$(du | awk '{print $1}' | sed s/.$//g)"
+
+PLACE_SAVED=$(($INDIR_SIZE - $OUTDIR_SIZE))
+PCT_SAVED=$((100*$PLACE_SAVED/$INDIR_SIZE))
 
 if [ "$INDIR_FILE_COUNT" = "$OUTDIR_FILE_COUNT" ]; then
     echo "Replacing $INDIR folder with compressed files"
     d=$(date +%Y-%m-%d_%H%M)
+
     cd $INDIR/..
     tar czvf /tmp/$DIRNAME-$d.tar.gz $DIRNAME
     rm -rf $INDIR
     mv $OUTDIR $INDIR
+
+    echo "###############"
+    echo "# $PCT_SAVED %"
+    echo "# About $PLACE_SAVED K"
+    echo "###############"
+
 else
     echo "Problem when retrieving files from Tinypng"
     echo "Files form $INDIR : $INDIR_FILE_COUNT"
